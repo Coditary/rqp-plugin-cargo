@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "name": "template",
+  "version": "0.1.0",
+  "summary": "Template wrapper plugin",
+  "description": "ReqPack wrapper template bundle",
+  "license": "MIT"
+}

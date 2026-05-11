@@ -1,0 +1,109 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  REQPACK_RUNTIME_TAG: v1.0.12
+
+jobs:
+  system-tests-linux:
+    name: linux-${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-linux
+            runner: ubuntu-24.04
+            platform: linux/amd64
+          - target: aarch64-linux
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends podman
+
+      - name: Pull published ReqPack image
+        run: |
+          podman pull --platform "${{ matrix.platform }}" "ghcr.io/coditary/reqpack:${REQPACK_RUNTIME_TAG}"
+
+      - name: Run direct bundle-directory test
+        run: |
+          podman run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            --entrypoint /bin/sh \
+            "ghcr.io/coditary/reqpack:${REQPACK_RUNTIME_TAG}" \
+            -lc 'rqp test-plugin --help >/dev/null && rqp test-plugin --plugin /workspace --preset core'
+
+      - name: Run copied bundle-directory test
+        run: |
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
+          plugin_dir="$tmp_dir/template-wrapper"
+          mkdir -p "$plugin_dir/scripts"
+          cp metadata.json "$plugin_dir/metadata.json"
+          python3 -c 'import json, pathlib, sys; path = pathlib.Path(sys.argv[1]); data = json.loads(path.read_text()); data["name"] = "template-wrapper"; path.write_text(json.dumps(data, indent=2) + "\n")' "$plugin_dir/metadata.json"
+          cp reqpack.lua "$plugin_dir/reqpack.lua"
+          cp run.lua "$plugin_dir/run.lua"
+          cp scripts/install.lua "$plugin_dir/scripts/install.lua"
+          cp scripts/remove.lua "$plugin_dir/scripts/remove.lua"
+          cp -R .reqpack-test "$plugin_dir/.reqpack-test"
+
+          podman run --rm \
+            -v "$tmp_dir:/fixtures" \
+            --entrypoint /bin/sh \
+            "ghcr.io/coditary/reqpack:${REQPACK_RUNTIME_TAG}" \
+            -lc 'rqp test-plugin --plugin /fixtures/template-wrapper --preset core'
+
+  system-tests-macos:
+    name: aarch64-darwin
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download published ReqPack Darwin bundle
+        run: |
+          mkdir -p release-artifacts
+          curl -fsSL \
+            "https://github.com/Coditary/ReqPack/releases/download/${REQPACK_RUNTIME_TAG}/rqp-${REQPACK_RUNTIME_TAG}-aarch64-darwin.tar.gz" \
+            -o "release-artifacts/rqp-${REQPACK_RUNTIME_TAG}-aarch64-darwin.tar.gz"
+
+      - name: Extract runtime bundle
+        run: |
+          mkdir -p runtime
+          tar -xzf "release-artifacts/rqp-${REQPACK_RUNTIME_TAG}-aarch64-darwin.tar.gz" -C runtime
+
+      - name: Run direct bundle-directory test
+        run: |
+          ./runtime/rqp test-plugin --help >/dev/null
+          ./runtime/rqp test-plugin --plugin . --preset core
+
+      - name: Run copied bundle-directory test
+        run: |
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
+          plugin_dir="$tmp_dir/template-wrapper"
+          mkdir -p "$plugin_dir/scripts"
+          cp metadata.json "$plugin_dir/metadata.json"
+          python3 -c 'import json, pathlib, sys; path = pathlib.Path(sys.argv[1]); data = json.loads(path.read_text()); data["name"] = "template-wrapper"; path.write_text(json.dumps(data, indent=2) + "\n")' "$plugin_dir/metadata.json"
+          cp reqpack.lua "$plugin_dir/reqpack.lua"
+          cp run.lua "$plugin_dir/run.lua"
+          cp scripts/install.lua "$plugin_dir/scripts/install.lua"
+          cp scripts/remove.lua "$plugin_dir/scripts/remove.lua"
+          cp -R .reqpack-test "$plugin_dir/.reqpack-test"
+          ./runtime/rqp test-plugin --plugin "$plugin_dir" --preset core
