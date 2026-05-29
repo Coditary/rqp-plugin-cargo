@@ -1,16 +1,21 @@
 return {
-  name = "template outdated",
+  name = "cargo outdated",
   request = {
     action = "outdated",
-    system = "template",
+    system = "nosys",
   },
-  fakeExec = {},
+  fakeExec = {
+    {
+      match = "command -v cargo >/dev/null 2>&1",
+      exitCode = 0,
+      stdout = "",
+      stderr = "",
+      success = true,
+    },
+  },
   expect = {
     success = true,
     events = { "outdated" },
-    eventPayloads = {
-      outdated = "{}",
-    },
     resultCount = 0,
   }
 }

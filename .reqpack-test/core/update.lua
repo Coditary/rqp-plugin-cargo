@@ -1,18 +1,36 @@
 return {
-  name = "template update",
+  name = "cargo tool update",
   request = {
     action = "update",
-    system = "template",
+    system = "nosys",
     packages = {
-      { name = "delta" }
+      { name = "ripgrep", version = "14.1.1", packageType = "tool" }
     },
   },
-  fakeExec = {},
+  fakeExec = {
+    {
+      match = "command -v cargo >/dev/null 2>&1",
+      exitCode = 0,
+      stdout = "",
+      stderr = "",
+      success = true,
+    },
+    {
+      match = "cargo install --color never --force --version 14.1.1 ripgrep",
+      exitCode = 0,
+      stdout = "update ok\n",
+      stderr = "",
+      success = true,
+    },
+  },
   expect = {
     success = true,
-    events = { "updated", "success" },
-    eventPayloads = {
-      success = "ok",
+    commands = {
+      "cargo install --color never --force --version 14.1.1 ripgrep"
     },
+    stdout = {
+      "update ok\n"
+    },
+    events = { "updated", "success" },
   }
 }

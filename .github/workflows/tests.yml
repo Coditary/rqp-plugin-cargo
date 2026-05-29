@@ -47,7 +47,7 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             --entrypoint /bin/sh \
             "ghcr.io/coditary/reqpack:${REQPACK_RUNTIME_TAG}" \
-            -lc 'rqp test-plugin --help >/dev/null && rqp test-plugin --plugin /workspace --preset core'
+            -lc 'rqp test-plugin --help >/dev/null && rqp test-plugin --plugin /workspace/run.lua --preset core'
 
       - name: Run copied bundle-directory test
         run: |
@@ -67,7 +67,7 @@ jobs:
             -v "$tmp_dir:/fixtures" \
             --entrypoint /bin/sh \
             "ghcr.io/coditary/reqpack:${REQPACK_RUNTIME_TAG}" \
-            -lc 'rqp test-plugin --plugin /fixtures/template-wrapper --preset core'
+            -lc 'rqp test-plugin --plugin /fixtures/template-wrapper/run.lua --preset core'
 
   system-tests-macos:
     name: aarch64-darwin
@@ -91,7 +91,7 @@ jobs:
       - name: Run direct bundle-directory test
         run: |
           ./runtime/rqp test-plugin --help >/dev/null
-          ./runtime/rqp test-plugin --plugin . --preset core
+          ./runtime/rqp test-plugin --plugin ./run.lua --preset core
 
       - name: Run copied bundle-directory test
         run: |
@@ -106,4 +106,4 @@ jobs:
           cp scripts/install.lua "$plugin_dir/scripts/install.lua"
           cp scripts/remove.lua "$plugin_dir/scripts/remove.lua"
           cp -R .reqpack-test "$plugin_dir/.reqpack-test"
-          ./runtime/rqp test-plugin --plugin "$plugin_dir" --preset core
+          ./runtime/rqp test-plugin --plugin "$plugin_dir/run.lua" --preset core

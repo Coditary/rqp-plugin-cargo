@@ -1,17 +1,31 @@
 return {
-  name = "template install local",
+  name = "cargo install local",
   request = {
     action = "install",
-    system = "template",
-    localPath = "/tmp/delta.tgz",
+    system = "nosys",
+    localPath = "/tmp/ripgrep",
   },
-  fakeExec = {},
+  fakeExec = {
+    {
+      match = "command -v cargo >/dev/null 2>&1",
+      exitCode = 0,
+      stdout = "",
+      stderr = "",
+      success = true,
+    },
+    {
+      match = "cargo install --path /tmp/ripgrep --color never",
+      exitCode = 0,
+      stdout = "local install ok\n",
+      stderr = "",
+      success = true,
+    },
+  },
   expect = {
     success = true,
     events = { "installed", "success" },
     eventPayloads = {
-      installed = "{localTarget=true, path=/tmp/delta.tgz}",
-      success = "ok",
+      installed = "{localTarget=true, path=/tmp/ripgrep}",
     },
   }
 }
